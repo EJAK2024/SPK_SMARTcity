@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "809214919230",
+    "project_id": "spk-smartcity",
+    "storage_bucket": "spk-smartcity.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:809214919230:android:7cd8454b7e3544ab43476f",
+        "android_client_info": {
+          "package_name": "com.example.spk_smartcity"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_MP4krEb3Ygw220pijW9i4-ElrbCG88A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:809214919230:android:c2c16100b0921ae243476f",
+        "android_client_info": {
+          "package_name": "com.spk.smartcity.spk_smartcity"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_MP4krEb3Ygw220pijW9i4-ElrbCG88A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
