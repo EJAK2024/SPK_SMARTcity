@@ -34,17 +34,49 @@ class _PenilaianWizardScreenState extends State<PenilaianWizardScreen> {
       'C1': 0.20, 'C2': 0.20, 'C3': 0.15,
       'C4': 0.15, 'C5': 0.15, 'C6': 0.10, 'C7': 0.05,
     },
-    'Prioritas Keamanan': {
+    'Prioritas Keamanan Siber': {
       'C1': 0.15, 'C2': 0.30, 'C3': 0.10,
       'C4': 0.10, 'C5': 0.15, 'C6': 0.10, 'C7': 0.10,
     },
-    'Prioritas Biaya': {
+    'Prioritas Biaya Rendah': {
       'C1': 0.10, 'C2': 0.10, 'C3': 0.30,
       'C4': 0.10, 'C5': 0.10, 'C6': 0.15, 'C7': 0.15,
     },
-    'Prioritas Pengalaman': {
+    'Prioritas Pengalaman Proyek': {
       'C1': 0.15, 'C2': 0.15, 'C3': 0.10,
       'C4': 0.25, 'C5': 0.15, 'C6': 0.10, 'C7': 0.10,
+    },
+    'Prioritas Infrastruktur Jaringan': {
+      'C1': 0.30, 'C2': 0.15, 'C3': 0.10,
+      'C4': 0.10, 'C5': 0.10, 'C6': 0.15, 'C7': 0.10,
+    },
+    'Prioritas Transformasi Digital': {
+      'C1': 0.25, 'C2': 0.15, 'C3': 0.10,
+      'C4': 0.15, 'C5': 0.15, 'C6': 0.15, 'C7': 0.05,
+    },
+    'Prioritas Layanan Publik': {
+      'C1': 0.10, 'C2': 0.10, 'C3': 0.10,
+      'C4': 0.10, 'C5': 0.35, 'C6': 0.15, 'C7': 0.10,
+    },
+    'Prioritas Skalabilitas Masa Depan': {
+      'C1': 0.15, 'C2': 0.10, 'C3': 0.05,
+      'C4': 0.10, 'C5': 0.10, 'C6': 0.35, 'C7': 0.15,
+    },
+    'Prioritas Kepatuhan Regulasi': {
+      'C1': 0.10, 'C2': 0.15, 'C3': 0.10,
+      'C4': 0.10, 'C5': 0.10, 'C6': 0.10, 'C7': 0.35,
+    },
+    'Kualitas Tanpa Kompromi': {
+      'C1': 0.25, 'C2': 0.20, 'C3': 0.05,
+      'C4': 0.15, 'C5': 0.20, 'C6': 0.10, 'C7': 0.05,
+    },
+    'Penghematan Maksimal': {
+      'C1': 0.05, 'C2': 0.05, 'C3': 0.45,
+      'C4': 0.05, 'C5': 0.10, 'C6': 0.15, 'C7': 0.15,
+    },
+    'Quick Win - Implementasi Cepat': {
+      'C1': 0.15, 'C2': 0.10, 'C3': 0.15,
+      'C4': 0.20, 'C5': 0.25, 'C6': 0.10, 'C7': 0.05,
     },
   };
 
@@ -82,6 +114,20 @@ class _PenilaianWizardScreenState extends State<PenilaianWizardScreen> {
 
   void _nextStep() {
     if (_currentStep < 3) {
+      final totalWeight = _calculateTotalWeight();
+      final isWeightValid = (totalWeight - 1.0).abs() < 0.01;
+
+      if (_currentStep == 2 && !isWeightValid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Total bobot belum 1.00 (${totalWeight.toStringAsFixed(2)}). Bobot akan dinormalisasi otomatis.'),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+
       setState(() => _currentStep++);
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
@@ -188,6 +234,15 @@ class _PenilaianWizardScreenState extends State<PenilaianWizardScreen> {
     if (_selectedVendors.isEmpty || _kriteriaList.isEmpty) return;
 
     setState(() => _isSaving = true);
+
+    // Auto-normalize weights if total != 1.0
+    final totalWeight = _calculateTotalWeight();
+    if (totalWeight > 0 && (totalWeight - 1.0).abs() >= 0.01) {
+      for (final k in _kriteriaList) {
+        final current = _weights[k.id] ?? k.bobot;
+        _weights[k.id] = current / totalWeight;
+      }
+    }
 
     for (final vendor in _selectedVendors) {
       await _firebaseService.deletePenilaianByVendor(vendor.id);
@@ -1578,15 +1633,11 @@ class _PenilaianWizardScreenState extends State<PenilaianWizardScreen> {
   }
 
   Widget _buildBottomButtons() {
-    final totalWeight = _calculateTotalWeight();
-    final isWeightValid = (totalWeight - 1.0).abs() < 0.01;
     final canProceed = _currentStep == 0
         ? _selectedVendors.isNotEmpty
         : _currentStep == 1
             ? _selectedVendors.isNotEmpty
-            : _currentStep == 2
-                ? isWeightValid
-                : true;
+            : true;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1623,7 +1674,7 @@ class _PenilaianWizardScreenState extends State<PenilaianWizardScreen> {
             flex: _currentStep == 3 ? 1 : 1,
             child: _currentStep == 3
                 ? FilledButton.icon(
-                    onPressed: (_selectedVendors.isEmpty || _isSaving || !isWeightValid)
+                    onPressed: (_selectedVendors.isEmpty || _isSaving)
                         ? null
                         : _saveScores,
                     icon: _isSaving

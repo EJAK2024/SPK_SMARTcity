@@ -13,35 +13,35 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _textFadeAnimation;
+  late Animation<double> _logoFade;
+  late Animation<double> _logoScale;
+  late Animation<Offset> _textSlide;
+  late Animation<double> _subtitleFade;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+        curve: const Interval(0.0, 1.0, curve: Curves.easeIn),
       ),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+    _logoScale = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
+        curve: const Interval(0.0, 1.0, curve: Curves.elasticOut),
       ),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.5),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _subtitleFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
         curve: const Interval(0.5, 1.0, curve: Curves.easeIn),
@@ -63,9 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const HomeScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     });
@@ -96,44 +94,39 @@ class _SplashScreenState extends State<SplashScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+            FadeTransition(
+              opacity: _logoFade,
+              child: ScaleTransition(
+                scale: _logoScale,
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
-                        child: Image.asset(
-                          'assets/logo.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      fit: BoxFit.contain,
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
             const SizedBox(height: 32),
             SlideTransition(
-              position: _slideAnimation,
+              position: _textSlide,
               child: FadeTransition(
-                opacity: _textFadeAnimation,
+                opacity: _subtitleFade,
                 child: Column(
                   children: [
                     Text(
@@ -149,7 +142,7 @@ class _SplashScreenState extends State<SplashScreen>
                       AppStrings.subtitle,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -158,7 +151,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
             const SizedBox(height: 48),
             FadeTransition(
-              opacity: _textFadeAnimation,
+              opacity: _subtitleFade,
               child: SizedBox(
                 width: 24,
                 height: 24,

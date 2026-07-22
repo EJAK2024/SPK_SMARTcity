@@ -13,7 +13,6 @@ class VendorScreen extends StatefulWidget {
 
 class _VendorScreenState extends State<VendorScreen> {
   final FirebaseService _firebaseService = FirebaseService();
-  final _formKey = GlobalKey<FormState>();
   final _kodeController = TextEditingController();
   final _namaController = TextEditingController();
   final _alamatController = TextEditingController();
@@ -45,7 +44,7 @@ class _VendorScreenState extends State<VendorScreen> {
         foregroundColor: Colors.white,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddDialog(),
+        onPressed: _showAddDialog,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -211,31 +210,7 @@ class _VendorScreenState extends State<VendorScreen> {
     _teleponController.clear();
     _emailController.clear();
     _fokusController.clear();
-
-    showDialog(
-      context: context,
-      builder: (context) => _buildFormDialog(
-        title: '${AppStrings.tambah} ${AppStrings.vendor}',
-        onSave: () async {
-          if (_formKey.currentState!.validate()) {
-            final vendor = Vendor(
-              id: '',
-              kode: _kodeController.text,
-              nama: _namaController.text,
-              alamat: _alamatController.text,
-              telepon: _teleponController.text,
-              email: _emailController.text,
-              fokus: _fokusController.text,
-              createdAt: DateTime.now(),
-            );
-            await _firebaseService.addVendor(vendor);
-            if (!mounted) return;
-            // ignore: use_build_context_synchronously
-            Navigator.pop(context);
-          }
-        },
-      ),
-    );
+    _openFormDialog(isEdit: false);
   }
 
   void _showEditDialog(Vendor vendor) {
@@ -245,152 +220,206 @@ class _VendorScreenState extends State<VendorScreen> {
     _teleponController.text = vendor.telepon;
     _emailController.text = vendor.email;
     _fokusController.text = vendor.fokus;
-
-    showDialog(
-      context: context,
-      builder: (context) => _buildFormDialog(
-        title: '${AppStrings.edit} ${AppStrings.vendor}',
-        onSave: () async {
-          if (_formKey.currentState!.validate()) {
-            final updatedVendor = Vendor(
-              id: vendor.id,
-              kode: _kodeController.text,
-              nama: _namaController.text,
-              alamat: _alamatController.text,
-              telepon: _teleponController.text,
-              email: _emailController.text,
-              fokus: _fokusController.text,
-              createdAt: vendor.createdAt,
-            );
-            await _firebaseService.updateVendor(updatedVendor);
-            if (!mounted) return;
-            // ignore: use_build_context_synchronously
-            Navigator.pop(context);
-          }
-        },
-      ),
-    );
+    _openFormDialog(isEdit: true, vendor: vendor);
   }
 
-  Widget _buildFormDialog({
-    required String title,
-    required VoidCallback onSave,
-  }) {
-    return AlertDialog(
-      title: Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _kodeController,
-                decoration: InputDecoration(
-                  labelText: 'Kode (A1, A2, dst)',
-                  border: const OutlineInputBorder(),
-                  labelStyle: GoogleFonts.poppins(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Kode harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _namaController,
-                decoration: InputDecoration(
-                  labelText: AppStrings.namaVendor,
-                  border: const OutlineInputBorder(),
-                  labelStyle: GoogleFonts.poppins(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Nama vendor harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _fokusController,
-                decoration: InputDecoration(
-                  labelText: 'Fokus Solusi',
-                  border: const OutlineInputBorder(),
-                  labelStyle: GoogleFonts.poppins(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _alamatController,
-                decoration: InputDecoration(
-                  labelText: AppStrings.alamat,
-                  border: const OutlineInputBorder(),
-                  labelStyle: GoogleFonts.poppins(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Alamat harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _teleponController,
-                decoration: InputDecoration(
-                  labelText: AppStrings.telepon,
-                  border: const OutlineInputBorder(),
-                  labelStyle: GoogleFonts.poppins(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Telepon harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(
-                  labelText: AppStrings.email,
-                  border: const OutlineInputBorder(),
-                  labelStyle: GoogleFonts.poppins(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Email harus diisi';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Email tidak valid';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
+  void _openFormDialog({required bool isEdit, Vendor? vendor}) {
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(AppStrings.batal, style: GoogleFonts.poppins()),
-        ),
-        FilledButton(
-          onPressed: onSave,
-          child: Text(AppStrings.simpan, style: GoogleFonts.poppins()),
-        ),
-      ],
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isEdit ? '${AppStrings.edit} ${AppStrings.vendor}' : '${AppStrings.tambah} ${AppStrings.vendor}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _kodeController,
+                    decoration: InputDecoration(
+                      labelText: 'Kode (A1, A2, dst)',
+                      border: const OutlineInputBorder(),
+                      labelStyle: GoogleFonts.poppins(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Kode harus diisi';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _namaController,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.namaVendor,
+                      border: const OutlineInputBorder(),
+                      labelStyle: GoogleFonts.poppins(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Nama vendor harus diisi';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _fokusController,
+                    decoration: InputDecoration(
+                      labelText: 'Fokus Solusi',
+                      border: const OutlineInputBorder(),
+                      labelStyle: GoogleFonts.poppins(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _alamatController,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.alamat,
+                      border: const OutlineInputBorder(),
+                      labelStyle: GoogleFonts.poppins(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Alamat harus diisi';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _teleponController,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.telepon,
+                      border: const OutlineInputBorder(),
+                      labelStyle: GoogleFonts.poppins(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Telepon harus diisi';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.email,
+                      border: const OutlineInputBorder(),
+                      labelStyle: GoogleFonts.poppins(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Email harus diisi';
+                      if (!value.contains('@')) return 'Email tidak valid';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(AppStrings.batal, style: GoogleFonts.poppins()),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () async {
+                            if (!formKey.currentState!.validate()) return;
+
+                            final newVendor = Vendor(
+                              id: isEdit ? vendor!.id : '',
+                              kode: _kodeController.text,
+                              nama: _namaController.text,
+                              alamat: _alamatController.text,
+                              telepon: _teleponController.text,
+                              email: _emailController.text,
+                              fokus: _fokusController.text,
+                              createdAt: isEdit ? vendor!.createdAt : DateTime.now(),
+                            );
+
+                            if (isEdit) {
+                              await _firebaseService.updateVendor(newVendor);
+                            } else {
+                              await _firebaseService.addVendor(newVendor);
+                            }
+
+                            if (!mounted) return;
+                            Navigator.pop(sheetContext);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isEdit
+                                      ? 'Vendor "${newVendor.nama}" berhasil diperbarui!'
+                                      : 'Vendor "${newVendor.nama}" berhasil ditambahkan!',
+                                ),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(AppStrings.simpan, style: GoogleFonts.poppins()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   void _showDeleteConfirmation(Vendor vendor) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(AppStrings.konfirmasi, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
         content: Text(
           'Hapus vendor "${vendor.nama}"?',
@@ -398,7 +427,7 @@ class _VendorScreenState extends State<VendorScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(AppStrings.tidak, style: GoogleFonts.poppins()),
           ),
           FilledButton(
@@ -407,8 +436,15 @@ class _VendorScreenState extends State<VendorScreen> {
               await _firebaseService.deleteVendor(vendor.id);
               await _firebaseService.deletePenilaianByVendor(vendor.id);
               if (!mounted) return;
-              // ignore: use_build_context_synchronously
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Vendor "${vendor.nama}" berhasil dihapus!'),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
             },
             child: Text(AppStrings.ya, style: GoogleFonts.poppins()),
           ),

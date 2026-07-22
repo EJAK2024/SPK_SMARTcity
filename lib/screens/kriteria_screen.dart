@@ -13,7 +13,6 @@ class KriteriaScreen extends StatefulWidget {
 
 class _KriteriaScreenState extends State<KriteriaScreen> {
   final FirebaseService _firebaseService = FirebaseService();
-  final _formKey = GlobalKey<FormState>();
   final _kodeController = TextEditingController();
   final _namaController = TextEditingController();
   final _deskripsiController = TextEditingController();
@@ -42,7 +41,7 @@ class _KriteriaScreenState extends State<KriteriaScreen> {
         foregroundColor: Colors.white,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddDialog(),
+        onPressed: _showAddDialog,
         backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -207,29 +206,7 @@ class _KriteriaScreenState extends State<KriteriaScreen> {
     _deskripsiController.clear();
     _bobotController.clear();
     _isBenefit = true;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => _buildFormDialog(
-        title: '${AppStrings.tambah} ${AppStrings.kriteria}',
-        onSave: () async {
-          if (_formKey.currentState!.validate()) {
-            final kriteria = Kriteria(
-              id: '',
-              kode: _kodeController.text,
-              nama: _namaController.text,
-              deskripsi: _deskripsiController.text,
-              bobot: double.parse(_bobotController.text),
-              isBenefit: _isBenefit,
-              createdAt: DateTime.now(),
-            );
-            await _firebaseService.addKriteria(kriteria);
-            if (!mounted) return;
-            Navigator.of(context).pop();
-          }
-        },
-      ),
-    );
+    _openFormDialog(isEdit: false);
   }
 
   void _showEditDialog(Kriteria kriteria) {
@@ -238,147 +215,207 @@ class _KriteriaScreenState extends State<KriteriaScreen> {
     _deskripsiController.text = kriteria.deskripsi;
     _bobotController.text = kriteria.bobot.toString();
     _isBenefit = kriteria.isBenefit;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => _buildFormDialog(
-        title: '${AppStrings.edit} ${AppStrings.kriteria}',
-        onSave: () async {
-          if (_formKey.currentState!.validate()) {
-            final updatedKriteria = Kriteria(
-              id: kriteria.id,
-              kode: _kodeController.text,
-              nama: _namaController.text,
-              deskripsi: _deskripsiController.text,
-              bobot: double.parse(_bobotController.text),
-              isBenefit: _isBenefit,
-              createdAt: kriteria.createdAt,
-            );
-            await _firebaseService.updateKriteria(updatedKriteria);
-            if (!mounted) return;
-            Navigator.of(context).pop();
-          }
-        },
-      ),
-    );
+    _openFormDialog(isEdit: true, kriteria: kriteria);
   }
 
-  Widget _buildFormDialog({
-    required String title,
-    required VoidCallback onSave,
-  }) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return AlertDialog(
-          title: Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-          content: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: _kodeController,
-                    decoration: InputDecoration(
-                      labelText: 'Kode (C1, C2, dst)',
-                      border: const OutlineInputBorder(),
-                      labelStyle: GoogleFonts.poppins(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Kode harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _namaController,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.namaKriteria,
-                      border: const OutlineInputBorder(),
-                      labelStyle: GoogleFonts.poppins(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nama kriteria harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _deskripsiController,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.deskripsi,
-                      border: const OutlineInputBorder(),
-                      labelStyle: GoogleFonts.poppins(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Deskripsi harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _bobotController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: '${AppStrings.bobot} (0-1)',
-                      border: const OutlineInputBorder(),
-                      labelStyle: GoogleFonts.poppins(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Bobot harus diisi';
-                      }
-                      final bobot = double.tryParse(value);
-                      if (bobot == null || bobot < 0 || bobot > 1) {
-                        return 'Bobot harus antara 0-1';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<bool>(
-                    initialValue: _isBenefit,
-                    decoration: InputDecoration(
-                      labelText: AppStrings.isBenefit,
-                      border: const OutlineInputBorder(),
-                      labelStyle: GoogleFonts.poppins(),
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: true,
-                        child: Text(AppStrings.benefit, style: GoogleFonts.poppins()),
-                      ),
-                      DropdownMenuItem(
-                        value: false,
-                        child: Text(AppStrings.cost, style: GoogleFonts.poppins()),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _isBenefit = value ?? true;
-                      });
-                    },
-                  ),
-                ],
+  void _openFormDialog({required bool isEdit, Kriteria? kriteria}) {
+    final formKey = GlobalKey<FormState>();
+    bool tempIsBenefit = _isBenefit;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (stateContext, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 20,
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppStrings.batal, style: GoogleFonts.poppins()),
-            ),
-            FilledButton(
-              onPressed: onSave,
-              child: Text(AppStrings.simpan, style: GoogleFonts.poppins()),
-            ),
-          ],
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        isEdit ? '${AppStrings.edit} ${AppStrings.kriteria}' : '${AppStrings.tambah} ${AppStrings.kriteria}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _kodeController,
+                        decoration: InputDecoration(
+                          labelText: 'Kode (C1, C2, dst)',
+                          border: const OutlineInputBorder(),
+                          labelStyle: GoogleFonts.poppins(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Kode harus diisi';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _namaController,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.namaKriteria,
+                          border: const OutlineInputBorder(),
+                          labelStyle: GoogleFonts.poppins(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Nama kriteria harus diisi';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _deskripsiController,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.deskripsi,
+                          border: const OutlineInputBorder(),
+                          labelStyle: GoogleFonts.poppins(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Deskripsi harus diisi';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _bobotController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: '${AppStrings.bobot} (0-1)',
+                          border: const OutlineInputBorder(),
+                          labelStyle: GoogleFonts.poppins(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Bobot harus diisi';
+                          final bobot = double.tryParse(value);
+                          if (bobot == null || bobot < 0 || bobot > 1) {
+                            return 'Bobot harus antara 0-1';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<bool>(
+                        initialValue: tempIsBenefit,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.isBenefit,
+                          border: const OutlineInputBorder(),
+                          labelStyle: GoogleFonts.poppins(),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text(AppStrings.benefit, style: GoogleFonts.poppins()),
+                          ),
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text(AppStrings.cost, style: GoogleFonts.poppins()),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setSheetState(() {
+                            tempIsBenefit = value ?? true;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(sheetContext),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(AppStrings.batal, style: GoogleFonts.poppins()),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () async {
+                                if (!formKey.currentState!.validate()) return;
+
+                                final newKriteria = Kriteria(
+                                  id: isEdit ? kriteria!.id : '',
+                                  kode: _kodeController.text,
+                                  nama: _namaController.text,
+                                  deskripsi: _deskripsiController.text,
+                                  bobot: double.parse(_bobotController.text),
+                                  isBenefit: tempIsBenefit,
+                                  createdAt: isEdit ? kriteria!.createdAt : DateTime.now(),
+                                );
+
+                                if (isEdit) {
+                                  await _firebaseService.updateKriteria(newKriteria);
+                                } else {
+                                  await _firebaseService.addKriteria(newKriteria);
+                                }
+
+                                if (!mounted) return;
+                                Navigator.pop(sheetContext);
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isEdit
+                                          ? 'Kriteria "${newKriteria.nama}" berhasil diperbarui!'
+                                          : 'Kriteria "${newKriteria.nama}" berhasil ditambahkan!',
+                                    ),
+                                    backgroundColor: AppColors.success,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                );
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.accent,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(AppStrings.simpan, style: GoogleFonts.poppins()),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -404,7 +441,15 @@ class _KriteriaScreenState extends State<KriteriaScreen> {
               await _firebaseService.deleteKriteria(kriteria.id);
               await _firebaseService.deletePenilaianByKriteria(kriteria.id);
               if (!mounted) return;
-              Navigator.of(context).pop();
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Kriteria "${kriteria.nama}" berhasil dihapus!'),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
             },
             child: Text(AppStrings.ya, style: GoogleFonts.poppins()),
           ),

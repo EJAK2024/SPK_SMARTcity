@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   bool _isSeeding = false;
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -76,53 +77,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
+  void _showResetDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
         title: Text(
-          AppStrings.appName,
+          'Reset Semua Data',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        content: Text(
+          'Semua data vendor, kriteria, dan penilaian akan dihapus. Lanjutkan?',
+          style: GoogleFonts.poppins(),
+        ),
         actions: [
-          PopupMenuButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'seed',
-                child: Row(
-                  children: [
-                    const Icon(Icons.storage, size: 20, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Text('Isi Data Contoh', style: GoogleFonts.poppins()),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'reset',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete_forever, size: 20, color: AppColors.error),
-                    const SizedBox(width: 8),
-                    Text('Reset Semua Data', style: GoogleFonts.poppins()),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (value) {
-              if (value == 'seed') {
-                _showSeedDialog();
-              } else if (value == 'reset') {
-                _showResetDialog();
-              }
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppStrings.tidak, style: GoogleFonts.poppins()),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () async {
+              await _firebaseService.deleteAllData();
+              if (!mounted) return;
+              // ignore: use_build_context_synchronously
+              Navigator.pop(context);
+              // ignore: use_build_context_synchronously
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Semua data berhasil dihapus!')),
+              );
             },
+            child: Text('Ya, Hapus Semua', style: GoogleFonts.poppins()),
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> screens = [
+      _buildBerandaTab(),
+      const VendorScreen(),
+      const KriteriaScreen(),
+      const HasilScreen(),
+    ];
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: _currentIndex == 0
+          ? AppBar(
+              title: Text(
+                AppStrings.appName,
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              actions: [
+                PopupMenuButton(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'seed',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.storage, size: 20, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text('Isi Data Contoh', style: GoogleFonts.poppins()),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'reset',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_forever, size: 20, color: AppColors.error),
+                          const SizedBox(width: 8),
+                          Text('Reset Semua Data', style: GoogleFonts.poppins()),
+                        ],
+                      ),
+                    ),
+                  ],
+                  onSelected: (value) {
+                    if (value == 'seed') {
+                      _showSeedDialog();
+                    } else if (value == 'reset') {
+                      _showResetDialog();
+                    }
+                  },
+                ),
+              ],
+            )
+          : null,
       body: _isSeeding
           ? const Center(
               child: Column(
@@ -134,19 +180,80 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 16),
-                  _buildKriteriaInfo(),
-                  const SizedBox(height: 24),
-                  _buildMenuGrid(context),
-                ],
-              ),
+          : screens[_currentIndex],
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PenilaianWizardScreen()),
+                );
+              },
+              backgroundColor: AppColors.warning,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.auto_awesome),
+              label: Text('Wizard Penilaian', style: GoogleFonts.poppins()),
+            )
+          : null,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
             ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() => _currentIndex = index);
+          },
+          backgroundColor: Colors.white,
+          indicatorColor: AppColors.primary.withValues(alpha: 0.1),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          height: 70,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined, size: 24),
+              selectedIcon: Icon(Icons.home, size: 24, color: AppColors.primary),
+              label: 'Beranda',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.business_outlined, size: 24),
+              selectedIcon: Icon(Icons.business, size: 24, color: AppColors.primary),
+              label: 'Vendor',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.assignment_outlined, size: 24),
+              selectedIcon: Icon(Icons.assignment, size: 24, color: AppColors.primary),
+              label: 'Kriteria',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined, size: 24),
+              selectedIcon: Icon(Icons.bar_chart, size: 24, color: AppColors.primary),
+              label: 'Hasil',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBerandaTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 16),
+          _buildKriteriaInfo(),
+          const SizedBox(height: 16),
+          _buildQuickActions(),
+        ],
+      ),
     );
   }
 
@@ -307,102 +414,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMenuGrid(BuildContext context) {
-    final menus = [
-      _MenuItem(
-        icon: Icons.business,
-        title: AppStrings.vendor,
-        subtitle: 'Kelola data vendor',
-        color: AppColors.primary,
-        screen: const VendorScreen(),
-      ),
-      _MenuItem(
-        icon: Icons.assignment,
-        title: AppStrings.kriteria,
-        subtitle: 'Kelola kriteria penilaian',
-        color: AppColors.accent,
-        screen: const KriteriaScreen(),
-      ),
-      _MenuItem(
-        icon: Icons.auto_awesome,
-        title: 'Wizard Penilaian',
-        subtitle: 'Step-by-step penilaian',
-        color: AppColors.warning,
-        screen: const PenilaianWizardScreen(),
-      ),
-      _MenuItem(
-        icon: Icons.bar_chart,
-        title: AppStrings.hasil,
-        subtitle: 'Lihat hasil TOPSIS',
-        color: AppColors.success,
-        screen: const HasilScreen(),
-      ),
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: menus.length,
-      itemBuilder: (context, index) {
-        final menu = menus[index];
-        return _buildMenuCard(context, menu);
-      },
-    );
-  }
-
-  Widget _buildMenuCard(BuildContext context, _MenuItem menu) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => menu.screen),
-        );
-      },
-      child: Container(
+  Widget _buildQuickActions() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.flash_on, color: AppColors.warning, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Akses Cepat',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickActionCard(
+                    icon: Icons.business,
+                    title: 'Vendor',
+                    subtitle: '${6} vendor terdaftar',
+                    color: AppColors.primary,
+                    onTap: () => setState(() => _currentIndex = 1),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildQuickActionCard(
+                    icon: Icons.assignment,
+                    title: 'Kriteria',
+                    subtitle: '${7} kriteria aktif',
+                    color: AppColors.accent,
+                    onTap: () => setState(() => _currentIndex = 2),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: menu.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(menu.icon, size: 32, color: menu.color),
-            ),
-            const SizedBox(height: 12),
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: 8),
             Text(
-              menu.title,
+              title,
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: color,
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
-              menu.subtitle,
+              subtitle,
               style: GoogleFonts.poppins(
-                fontSize: 11,
+                fontSize: 10,
                 color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
@@ -412,56 +507,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  void _showResetDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Reset Semua Data',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-        ),
-        content: Text(
-          'Semua data vendor, kriteria, dan penilaian akan dihapus. Lanjutkan?',
-          style: GoogleFonts.poppins(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppStrings.tidak, style: GoogleFonts.poppins()),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () async {
-              await _firebaseService.deleteAllData();
-              if (!mounted) return;
-              // ignore: use_build_context_synchronously
-              Navigator.pop(context);
-              // ignore: use_build_context_synchronously
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Semua data berhasil dihapus!')),
-              );
-            },
-            child: Text('Ya, Hapus Semua', style: GoogleFonts.poppins()),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MenuItem {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final Widget screen;
-
-  _MenuItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.screen,
-  });
 }
